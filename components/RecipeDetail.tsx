@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Recipe } from "@/lib/types";
 import { colorClass, totalTime } from "@/lib/ui";
-import { useShoppingList } from "@/lib/useShoppingList";
+import { formatRelativeDate } from "@/lib/week";
+import { useWeek } from "@/lib/useWeek";
 import { useToast } from "@/lib/useToast";
 import { deleteRecipeAction, updateRecipeImageAction } from "@/app/actions";
 import { uploadImage } from "./ImageDropzone";
@@ -16,15 +17,27 @@ import {
   CameraIcon,
   LinkIcon,
   TrashIcon,
-  PlusIcon,
-  CheckIcon,
   BasketIcon,
   BackIcon,
+  FlameIcon,
+  CalendarPlusIcon,
+  CalendarCheckIcon,
 } from "./Icons";
 
-export default function RecipeDetail({ recipe }: { recipe: Recipe }) {
+interface RecipeDetailProps {
+  recipe: Recipe;
+  queued: Recipe[];
+  checkedKeys: string[];
+}
+
+export default function RecipeDetail({ recipe, queued, checkedKeys }: RecipeDetailProps) {
   const router = useRouter();
-  const list = useShoppingList();
+  // The week hook needs to know about this recipe even if it isn't queued yet.
+  const known = useMemo(
+    () => (queued.some((r) => r.id === recipe.id) ? queued : [...queued, recipe]),
+    [queued, recipe]
+  );
+  const week = useWeek({ recipes: known, checkedKeys });
   const { toast, show } = useToast();
   const [showShopping, setShowShopping] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -38,7 +51,7 @@ export default function RecipeDetail({ recipe }: { recipe: Recipe }) {
   const tags = Array.isArray(recipe.tags) ? recipe.tags : [];
   const time = totalTime(recipe.prep_time, recipe.cook_time);
   const tone = colorClass(recipe.title);
-  const isAdded = list.addedIds.has(recipe.id);
+  const isQueued = week.queuedIds.has(recipe.id);
 
   useEffect(() => {
     document.body.style.overflow = showShopping ? "hidden" : "";
@@ -47,9 +60,9 @@ export default function RecipeDetail({ recipe }: { recipe: Recipe }) {
     };
   }, [showShopping]);
 
-  function toggleList() {
-    const n = list.toggleRecipe(recipe);
-    show(n ? `Added ${n} ingredients to your list` : "Removed from your list");
+  async function toggleQueue() {
+    const q = await week.toggleQueue(recipe);
+    show(q ? "On for this week" : "Taken off this week");
   }
 
   async function handlePhoto(file: File | undefined) {
@@ -76,7 +89,6 @@ export default function RecipeDetail({ recipe }: { recipe: Recipe }) {
 
   async function handleDelete() {
     setDeleting(true);
-    list.removeRecipe(recipe.id);
     await deleteRecipeAction(recipe.id);
     router.push("/");
   }
@@ -90,7 +102,7 @@ export default function RecipeDetail({ recipe }: { recipe: Recipe }) {
         <button className="btn btn-secondary" onClick={() => setShowShopping(true)}>
           <BasketIcon size={17} />
           Shopping list
-          {list.items.length > 0 && <span className="count-bubble">{list.items.length}</span>}
+          {week.remaining > 0 && <span className="count-bubble">{week.remaining}</span>}
         </button>
       </nav>
 
@@ -135,6 +147,21 @@ export default function RecipeDetail({ recipe }: { recipe: Recipe }) {
             ))}
           </div>
 
+          {recipe.times_cooked > 0 && (
+            <div className="history">
+              <p className="history-line">
+                Cooked {recipe.times_cooked} {recipe.times_cooked === 1 ? "time" : "times"}, last{" "}
+                {formatRelativeDate(recipe.last_cooked_at)}.
+              </p>
+              {recipe.last_note && (
+                <blockquote className="history-note">
+                  <span className="history-label">Your note last time</span>
+                  {recipe.last_note}
+                </blockquote>
+              )}
+            </div>
+          )}
+
           {error && <p className="error-text">{error}</p>}
 
           <div className="detail-actions">
@@ -150,9 +177,12 @@ export default function RecipeDetail({ recipe }: { recipe: Recipe }) {
               </div>
             ) : (
               <>
-                <button className={`btn ${isAdded ? "btn-green" : "btn-primary"}`} onClick={toggleList}>
-                  {isAdded ? <CheckIcon size={16} /> : <PlusIcon size={16} />}
-                  {isAdded ? "On your shopping list" : "Add to shopping list"}
+                <Link href={`/recipes/${recipe.id}/cook`} className="btn btn-primary">
+                  <FlameIcon size={16} /> Start cooking
+                </Link>
+                <button className={`btn ${isQueued ? "btn-green" : "btn-secondary"}`} onClick={toggleQueue}>
+                  {isQueued ? <CalendarCheckIcon size={16} /> : <CalendarPlusIcon size={16} />}
+                  {isQueued ? "On for this week" : "Add to this week"}
                 </button>
                 {recipe.source_url && (
                   <a className="btn btn-ghost" href={recipe.source_url} target="_blank" rel="noopener noreferrer">
@@ -205,10 +235,9 @@ export default function RecipeDetail({ recipe }: { recipe: Recipe }) {
 
       {showShopping && (
         <ShoppingPanel
-          items={list.items}
-          onToggleItem={list.toggleItem}
-          onClearChecked={list.clearChecked}
-          onClearAll={list.clearAll}
+          items={week.shopping}
+          onToggleItem={week.toggleCheck}
+          onUncheckAll={week.uncheckAll}
           onClose={() => setShowShopping(false)}
         />
       )}

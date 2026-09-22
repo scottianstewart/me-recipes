@@ -4,16 +4,22 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import type { Recipe, RecipeInput } from "@/lib/types";
 import { addRecipeAction } from "@/app/actions";
 import { colorClass } from "@/lib/ui";
-import { useShoppingList } from "@/lib/useShoppingList";
+import { useWeek } from "@/lib/useWeek";
 import { useToast } from "@/lib/useToast";
 import Header from "./Header";
+import QueueStrip from "./QueueStrip";
 import RecipeCard from "./RecipeCard";
 import AddRecipeModal from "./AddRecipeModal";
 import ShoppingPanel from "./ShoppingPanel";
 import { SearchIcon, PotIcon, PlusIcon } from "./Icons";
 
-export default function RecipeApp({ recipes }: { recipes: Recipe[] }) {
-  const list = useShoppingList();
+interface RecipeAppProps {
+  recipes: Recipe[];
+  checkedKeys: string[];
+}
+
+export default function RecipeApp({ recipes, checkedKeys }: RecipeAppProps) {
+  const week = useWeek({ recipes, checkedKeys });
   const { toast, show } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [showShopping, setShowShopping] = useState(false);
@@ -46,18 +52,16 @@ export default function RecipeApp({ recipes }: { recipes: Recipe[] }) {
           (Array.isArray(r.ingredients) && r.ingredients.some((i) => i.item.toLowerCase().includes(q)))
       );
     }
-    if (activeTag) {
-      out = out.filter((r) => Array.isArray(r.tags) && r.tags.includes(activeTag));
-    }
+    if (activeTag) out = out.filter((r) => Array.isArray(r.tags) && r.tags.includes(activeTag));
     return out;
   }, [recipes, search, activeTag]);
 
-  const toggleList = useCallback(
-    (recipe: Recipe) => {
-      const n = list.toggleRecipe(recipe);
-      show(n ? `Added ${n} ingredients to your list` : "Removed from your list");
+  const toggleQueue = useCallback(
+    async (recipe: Recipe) => {
+      const queued = await week.toggleQueue(recipe);
+      show(queued ? `${recipe.title} is on for this week` : `Took ${recipe.title} off this week`);
     },
-    [list, show]
+    [week, show]
   );
 
   async function handleSaveRecipe(recipe: RecipeInput) {
@@ -72,9 +76,21 @@ export default function RecipeApp({ recipes }: { recipes: Recipe[] }) {
     <div className="app-shell">
       <Header
         recipeCount={recipes.length}
-        shoppingCount={list.items.length}
+        shoppingRemaining={week.remaining}
         onAddRecipe={() => setShowModal(true)}
         onOpenShopping={() => setShowShopping(true)}
+      />
+
+      <QueueStrip
+        queued={week.queued}
+        remaining={week.remaining}
+        onRemove={toggleQueue}
+        onSetDay={week.setDay}
+        onOpenShopping={() => setShowShopping(true)}
+        onClear={async () => {
+          await week.clearWeek();
+          show("Cleared this week");
+        }}
       />
 
       {recipes.length > 0 && (
@@ -141,8 +157,8 @@ export default function RecipeApp({ recipes }: { recipes: Recipe[] }) {
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
-              isAdded={list.addedIds.has(recipe.id)}
-              onToggleList={toggleList}
+              isQueued={week.queuedIds.has(recipe.id)}
+              onToggleQueue={toggleQueue}
             />
           ))}
         </div>
@@ -152,10 +168,9 @@ export default function RecipeApp({ recipes }: { recipes: Recipe[] }) {
 
       {showShopping && (
         <ShoppingPanel
-          items={list.items}
-          onToggleItem={list.toggleItem}
-          onClearChecked={list.clearChecked}
-          onClearAll={list.clearAll}
+          items={week.shopping}
+          onToggleItem={week.toggleCheck}
+          onUncheckAll={week.uncheckAll}
           onClose={closeShopping}
         />
       )}

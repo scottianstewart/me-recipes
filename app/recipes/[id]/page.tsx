@@ -1,19 +1,11 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { prisma } from "@/lib/db";
-import { mapRecipe } from "@/lib/mapRecipe";
+import { getRecipe, getWeek } from "@/lib/recipes";
 import RecipeDetail from "@/components/RecipeDetail";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
-
-async function getRecipe(idParam: string) {
-  const id = Number(idParam);
-  if (!Number.isInteger(id)) return null;
-  const row = await prisma.recipe.findUnique({ where: { id } });
-  return row ? mapRecipe(row) : null;
-}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
@@ -26,7 +18,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function RecipePage({ params }: Params) {
   const { id } = await params;
-  const recipe = await getRecipe(id);
+  const [recipe, week] = await Promise.all([getRecipe(id), getWeek()]);
   if (!recipe) notFound();
-  return <RecipeDetail recipe={recipe} />;
+  return <RecipeDetail recipe={recipe} queued={week.queued} checkedKeys={week.checkedKeys} />;
 }

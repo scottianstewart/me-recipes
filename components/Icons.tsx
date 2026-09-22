@@ -109,3 +109,58 @@ export const BackIcon = ({ size = 18, strokeWidth = 2.5, className }: IconProps)
     <polyline points="11 6 5 12 11 18" />
   </svg>
 );
+
+export const CalendarPlusIcon = ({ size = 18, strokeWidth = 2.25, className }: IconProps) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <rect x="3" y="5" width="18" height="16" rx="3" />
+    <path d="M3 10h18M8 3v4M16 3v4" />
+    <path d="M12 13v5M9.5 15.5h5" />
+  </svg>
+);
+
+export const CalendarCheckIcon = ({ size = 18, strokeWidth = 2.25, className }: IconProps) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <rect x="3" y="5" width="18" height="16" rx="3" />
+    <path d="M3 10h18M8 3v4M16 3v4" />
+    <polyline points="9 15.5 11.2 17.5 15.5 13" />
+  </svg>
+);
+
+export const FlameIcon = ({ size = 18, strokeWidth = 2.25, className }: IconProps) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 01-8 0c0-1.5.5-2.5 1.5-3.5 0 1.5.5 2.5 1.5 3 0-3 .5-5.5 1-8z" />
+    <path d="M7.5 9.5C6 11 5 12.8 5 15a7 7 0 0014 0c0-2.2-1-4-2.5-5.5" />
+  </svg>
+);
+
+export const TimerIcon = ({ size = 16, strokeWidth = 2.25, className }: IconProps) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <circle cx="12" cy="13.5" r="7.5" />
+    <path d="M12 9.5v4l2.5 1.5M9.5 2.5h5M12 2.5V6" />
+  </svg>
+);
+
+export const PauseIcon = ({ size = 16, strokeWidth = 2.5, className }: IconProps) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <line x1="9" y1="6" x2="9" y2="18" />
+    <line x1="15" y1="6" x2="15" y2="18" />
+  </svg>
+);
+
+export const PlayIcon = ({ size = 16, strokeWidth = 2.5, className }: IconProps) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <polygon points="7 5 19 12 7 19" />
+  </svg>
+);
+
+export const ChevronRightIcon = ({ size = 18, strokeWidth = 2.5, className }: IconProps) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <polyline points="9 6 15 12 9 18" />
+  </svg>
+);
+
+export const ChevronLeftIcon = ({ size = 18, strokeWidth = 2.5, className }: IconProps) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <polyline points="15 6 9 12 15 18" />
+  </svg>
+);

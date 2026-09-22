@@ -1,31 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import type { ShoppingItem } from "@/lib/types";
 import { BasketIcon, CloseIcon } from "./Icons";
 
 interface ShoppingPanelProps {
   items: ShoppingItem[];
-  onToggleItem: (index: number) => void;
-  onClearChecked: () => void;
-  onClearAll: () => void;
+  onToggleItem: (recipeId: number, idx: number) => void;
+  onUncheckAll: () => void;
   onClose: () => void;
 }
 
-export default function ShoppingPanel({
-  items,
-  onToggleItem,
-  onClearChecked,
-  onClearAll,
-  onClose,
-}: ShoppingPanelProps) {
-  const groups: Record<string, { title: string; items: { item: ShoppingItem; globalIndex: number }[] }> = {};
-
-  items.forEach((item, i) => {
-    const key = String(item.recipeId);
-    if (!groups[key]) groups[key] = { title: item.recipeTitle, items: [] };
-    groups[key].items.push({ item, globalIndex: i });
-  });
+export default function ShoppingPanel({ items, onToggleItem, onUncheckAll, onClose }: ShoppingPanelProps) {
+  const groups = new Map<number, { title: string; items: ShoppingItem[] }>();
+  for (const item of items) {
+    if (!groups.has(item.recipeId)) groups.set(item.recipeId, { title: item.recipeTitle, items: [] });
+    groups.get(item.recipeId)!.items.push(item);
+  }
 
   const checkedCount = items.filter((i) => i.checked).length;
   const remaining = items.length - checkedCount;
@@ -62,31 +54,29 @@ export default function ShoppingPanel({
           {items.length === 0 ? (
             <div className="shopping-empty">
               <div className="blob"><BasketIcon size={30} /></div>
-              <p className="lead">Nothing on the list yet</p>
-              <p>Tap the + on any recipe and its ingredients will land here.</p>
+              <p className="lead">Nothing to buy yet</p>
+              <p>Add a recipe to this week and its ingredients will show up here.</p>
             </div>
           ) : (
-            Object.values(groups).map((group) => (
-              <div key={group.title} className="shopping-group">
-                <h4>{group.title}</h4>
-                {group.items.map(({ item, globalIndex }) => {
-                  const label = [
-                    item.ingredient.amount,
-                    item.ingredient.unit,
-                    item.ingredient.item,
-                  ]
+            Array.from(groups.entries()).map(([recipeId, group]) => (
+              <div key={recipeId} className="shopping-group">
+                <h4>
+                  <Link href={`/recipes/${recipeId}`}>{group.title}</Link>
+                </h4>
+                {group.items.map((item) => {
+                  const id = `si-${item.recipeId}-${item.idx}`;
+                  const label = [item.ingredient.amount, item.ingredient.unit, item.ingredient.item]
                     .filter(Boolean)
                     .join(" ");
-
                   return (
-                    <div key={globalIndex} className={`shopping-item ${item.checked ? "checked" : ""}`}>
+                    <div key={id} className={`shopping-item ${item.checked ? "checked" : ""}`}>
                       <input
                         type="checkbox"
-                        id={`si-${globalIndex}`}
+                        id={id}
                         checked={item.checked}
-                        onChange={() => onToggleItem(globalIndex)}
+                        onChange={() => onToggleItem(item.recipeId, item.idx)}
                       />
-                      <label htmlFor={`si-${globalIndex}`}>
+                      <label htmlFor={id}>
                         {label}
                         {item.ingredient.notes && (
                           <span className="ingredient-notes">, {item.ingredient.notes}</span>
@@ -102,11 +92,8 @@ export default function ShoppingPanel({
 
         {items.length > 0 && (
           <div className="shopping-footer">
-            <button className="btn btn-secondary" onClick={onClearChecked} disabled={checkedCount === 0}>
-              Clear checked{checkedCount > 0 ? ` (${checkedCount})` : ""}
-            </button>
-            <button className="btn btn-danger" onClick={onClearAll}>
-              Clear all
+            <button className="btn btn-secondary" onClick={onUncheckAll} disabled={checkedCount === 0}>
+              Uncheck all{checkedCount > 0 ? ` (${checkedCount})` : ""}
             </button>
           </div>
         )}

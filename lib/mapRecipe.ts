@@ -1,7 +1,16 @@
-import type { Recipe as RecipeRow } from "@prisma/client";
-import type { Recipe } from "@/lib/types";
+import type { Prisma } from "@prisma/client";
+import type { Recipe, PlannedDay } from "@/lib/types";
 
-export function mapRecipe(r: RecipeRow): Recipe {
+/** Shape returned by the recipe queries in app/page.tsx and app/recipes/[id]. */
+export const recipeInclude = {
+  cookLogs: { orderBy: { cookedAt: "desc" as const }, take: 1 },
+  _count: { select: { cookLogs: true } },
+} satisfies Prisma.RecipeInclude;
+
+type Row = Prisma.RecipeGetPayload<{ include: typeof recipeInclude }>;
+
+export function mapRecipe(r: Row): Recipe {
+  const last = r.cookLogs[0];
   return {
     id: r.id,
     title: r.title,
@@ -13,7 +22,12 @@ export function mapRecipe(r: RecipeRow): Recipe {
     steps: r.steps as unknown as Recipe["steps"],
     tags: r.tags,
     source_url: r.sourceUrl,
-    image_url: (r as RecipeRow & { imageUrl?: string | null }).imageUrl ?? null,
+    image_url: r.imageUrl ?? null,
     created_at: r.createdAt.toISOString(),
+    queued_at: r.queuedAt ? r.queuedAt.toISOString() : null,
+    planned_day: (r.plannedDay as PlannedDay | null) ?? null,
+    times_cooked: r._count.cookLogs,
+    last_cooked_at: last ? last.cookedAt.toISOString() : null,
+    last_note: last?.note ?? "",
   };
 }

@@ -4,17 +4,12 @@ import { BasketIcon, PlusIcon } from "./Icons";
 
 interface HeaderProps {
   recipeCount: number;
-  shoppingCount: number;
+  shoppingRemaining: number;
   onAddRecipe: () => void;
   onOpenShopping: () => void;
 }
 
-export default function Header({
-  recipeCount,
-  shoppingCount,
-  onAddRecipe,
-  onOpenShopping,
-}: HeaderProps) {
+export default function Header({ recipeCount, shoppingRemaining, onAddRecipe, onOpenShopping }: HeaderProps) {
   return (
     <header className="app-header">
       <p className="recipe-count">
@@ -24,7 +19,7 @@ export default function Header({
         <button className="btn btn-secondary" onClick={onOpenShopping}>
           <BasketIcon size={17} />
           Shopping list
-          {shoppingCount > 0 && <span className="count-bubble">{shoppingCount}</span>}
+          {shoppingRemaining > 0 && <span className="count-bubble">{shoppingRemaining}</span>}
         </button>
         <button className="btn btn-primary" onClick={onAddRecipe}>
           <PlusIcon size={16} />
