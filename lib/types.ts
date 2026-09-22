@@ -16,6 +16,7 @@ export interface Recipe {
   steps: string[];
   tags: string[];
   source_url: string | null;
+  image_url: string | null;
   created_at: string;
 }
 
@@ -29,6 +30,7 @@ export interface RecipeInput {
   steps: string[];
   tags: string[];
   source_url: string | null;
+  image_url: string | null;
 }
 
 export interface ShoppingItem {

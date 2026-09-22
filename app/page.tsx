@@ -1,9 +1,10 @@
-import { getRecipes } from "@/lib/db";
+import { prisma } from "@/lib/db";
+import { mapRecipe } from "@/lib/mapRecipe";
 import RecipeApp from "@/components/RecipeApp";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const recipes = await getRecipes();
-  return <RecipeApp recipes={recipes} />;
+  const rows = await prisma.recipe.findMany({ orderBy: { createdAt: "desc" } });
+  return <RecipeApp recipes={rows.map(mapRecipe)} />;
 }

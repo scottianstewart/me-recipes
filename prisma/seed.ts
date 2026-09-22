@@ -1,12 +1,14 @@
-import { sql } from "@vercel/postgres";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 const recipes = [
   {
     title: "Cacio e Pepe",
     description:
       "The classic Roman pasta with just three ingredients: pasta, Pecorino Romano, and black pepper.",
-    prep_time: "5 min",
-    cook_time: "15 min",
+    prepTime: "5 min",
+    cookTime: "15 min",
     servings: "4",
     ingredients: [
       { amount: "1", unit: "lb", item: "spaghetti or tonnarelli" },
@@ -23,14 +25,14 @@ const recipes = [
       "Serve immediately with extra Pecorino and cracked pepper on top.",
     ],
     tags: ["pasta", "italian", "quick", "vegetarian"],
-    source_url: "https://www.bonappetit.com/recipe/cacio-e-pepe",
+    sourceUrl: "https://www.bonappetit.com/recipe/cacio-e-pepe",
   },
   {
     title: "Blended Red Lentil Soup",
     description:
       "A silky, warmly spiced soup that blends down into a smooth, creamy texture.",
-    prep_time: "10 min",
-    cook_time: "30 min",
+    prepTime: "10 min",
+    cookTime: "30 min",
     servings: "6",
     ingredients: [
       { amount: "2", unit: "tbsp", item: "olive oil" },
@@ -54,15 +56,14 @@ const recipes = [
       "Ladle into bowls and finish with a swirl of olive oil, a pinch of smoked paprika, and crusty bread on the side.",
     ],
     tags: ["soup", "healthy", "meal-prep", "vegetarian"],
-    source_url:
-      "https://cookieandkate.com/best-red-lentil-soup-recipe/",
+    sourceUrl: "https://cookieandkate.com/best-red-lentil-soup-recipe/",
   },
   {
     title: "Crispy Black Bean Tacos",
     description:
       "Crunchy pan-fried tortillas filled with seasoned black beans, quick-pickled onions, and a bright lime crema.",
-    prep_time: "15 min",
-    cook_time: "15 min",
+    prepTime: "15 min",
+    cookTime: "15 min",
     servings: "4",
     ingredients: [
       { amount: "2", unit: "cans", item: "black beans", notes: "drained and rinsed" },
@@ -87,15 +88,14 @@ const recipes = [
       "Serve the crispy tacos topped with pickled onion, avocado slices, cilantro, a drizzle of lime crema, and hot sauce.",
     ],
     tags: ["mexican", "quick", "vegetarian"],
-    source_url:
-      "https://www.loveandlemons.com/black-bean-tacos/",
+    sourceUrl: "https://www.loveandlemons.com/black-bean-tacos/",
   },
   {
     title: "Vegetarian Burrito Bowls",
     description:
       "Loaded burrito bowls with cilantro-lime rice, seasoned beans, and all the fixings.",
-    prep_time: "15 min",
-    cook_time: "20 min",
+    prepTime: "15 min",
+    cookTime: "20 min",
     servings: "4",
     ingredients: [
       { amount: "1.5", unit: "cups", item: "long-grain white rice" },
@@ -120,8 +120,7 @@ const recipes = [
       "Finish with a dollop of sour cream and hot sauce. Serve immediately.",
     ],
     tags: ["mexican", "bowl", "meal-prep", "vegetarian"],
-    source_url:
-      "https://www.budgetbytes.com/burrito-bowls/",
+    sourceUrl: "https://www.budgetbytes.com/burrito-bowls/",
   },
 ];
 
@@ -129,29 +128,17 @@ async function seed() {
   console.log("Seeding recipes...");
 
   for (const r of recipes) {
-    await sql`
-      INSERT INTO recipes (title, description, prep_time, cook_time, servings,
-                           ingredients, steps, tags, source_url)
-      VALUES (
-        ${r.title},
-        ${r.description},
-        ${r.prep_time},
-        ${r.cook_time},
-        ${r.servings},
-        ${JSON.stringify(r.ingredients)},
-        ${JSON.stringify(r.steps)},
-        ${r.tags as unknown as string},
-        ${r.source_url}
-      )
-    `;
+    await prisma.recipe.create({ data: r });
     console.log(`  + ${r.title}`);
   }
 
-  console.log("Done. Seeded", recipes.length, "recipes.");
-  process.exit(0);
+  console.log(`Done. Seeded ${recipes.length} recipes.`);
 }
 
-seed().catch((err) => {
-  console.error("Seed failed:", err);
-  process.exit(1);
-});
+seed()
+  .then(() => prisma.$disconnect())
+  .catch(async (err) => {
+    console.error("Seed failed:", err);
+    await prisma.$disconnect();
+    process.exit(1);
+  });

@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import type { ShoppingItem } from "@/lib/types";
+import { BasketIcon, CloseIcon } from "./Icons";
 
 interface ShoppingPanelProps {
   items: ShoppingItem[];
@@ -17,45 +19,51 @@ export default function ShoppingPanel({
   onClearAll,
   onClose,
 }: ShoppingPanelProps) {
-  // Group items by recipe
   const groups: Record<string, { title: string; items: { item: ShoppingItem; globalIndex: number }[] }> = {};
 
   items.forEach((item, i) => {
     const key = String(item.recipeId);
-    if (!groups[key]) {
-      groups[key] = { title: item.recipeTitle, items: [] };
-    }
+    if (!groups[key]) groups[key] = { title: item.recipeTitle, items: [] };
     groups[key].items.push({ item, globalIndex: i });
   });
 
   const checkedCount = items.filter((i) => i.checked).length;
+  const remaining = items.length - checkedCount;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
     <>
       <div className="shopping-overlay" onClick={onClose} />
-      <div className="shopping-panel">
+      <aside className="shopping-panel" role="dialog" aria-modal="true" aria-label="Shopping list">
         <div className="shopping-header">
-          <h2>Shopping List</h2>
-          <button
-            className="btn btn-icon btn-ghost"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+          <div>
+            <h2>Shopping list</h2>
+            {items.length > 0 && (
+              <p>
+                {remaining === 0
+                  ? "All done, nice work"
+                  : `${remaining} thing${remaining === 1 ? "" : "s"} still to grab`}
+              </p>
+            )}
+          </div>
+          <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close">
+            <CloseIcon />
           </button>
         </div>
 
         <div className="shopping-body">
           {items.length === 0 ? (
             <div className="shopping-empty">
-              <p>&#128722;</p>
-              <p>Your shopping list is empty.</p>
-              <p style={{ fontSize: "0.85rem", marginTop: "0.25rem" }}>
-                Tap &ldquo;+ Add to list&rdquo; on a recipe card to get started.
-              </p>
+              <div className="blob"><BasketIcon size={30} /></div>
+              <p className="lead">Nothing on the list yet</p>
+              <p>Tap the + on any recipe and its ingredients will land here.</p>
             </div>
           ) : (
             Object.values(groups).map((group) => (
@@ -66,23 +74,24 @@ export default function ShoppingPanel({
                     item.ingredient.amount,
                     item.ingredient.unit,
                     item.ingredient.item,
-                    item.ingredient.notes ? `(${item.ingredient.notes})` : "",
                   ]
                     .filter(Boolean)
                     .join(" ");
 
                   return (
-                    <div
-                      key={globalIndex}
-                      className={`shopping-item ${item.checked ? "checked" : ""}`}
-                    >
+                    <div key={globalIndex} className={`shopping-item ${item.checked ? "checked" : ""}`}>
                       <input
                         type="checkbox"
                         id={`si-${globalIndex}`}
                         checked={item.checked}
                         onChange={() => onToggleItem(globalIndex)}
                       />
-                      <label htmlFor={`si-${globalIndex}`}>{label}</label>
+                      <label htmlFor={`si-${globalIndex}`}>
+                        {label}
+                        {item.ingredient.notes && (
+                          <span className="ingredient-notes">, {item.ingredient.notes}</span>
+                        )}
+                      </label>
                     </div>
                   );
                 })}
@@ -93,19 +102,15 @@ export default function ShoppingPanel({
 
         {items.length > 0 && (
           <div className="shopping-footer">
-            <button
-              className="btn btn-ghost"
-              onClick={onClearChecked}
-              disabled={checkedCount === 0}
-            >
-              Clear checked ({checkedCount})
+            <button className="btn btn-secondary" onClick={onClearChecked} disabled={checkedCount === 0}>
+              Clear checked{checkedCount > 0 ? ` (${checkedCount})` : ""}
             </button>
             <button className="btn btn-danger" onClick={onClearAll}>
               Clear all
             </button>
           </div>
         )}
-      </div>
+      </aside>
     </>
   );
 }

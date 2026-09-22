@@ -1,43 +1,51 @@
 "use client";
 
-import { useState } from "react";
-import type { RecipeInput, Ingredient } from "@/lib/types";
+import { useEffect, useState } from "react";
+import type { RecipeInput } from "@/lib/types";
+import { colorClass } from "@/lib/ui";
+import ImageDropzone from "./ImageDropzone";
+import { CloseIcon, SparkIcon, ClockIcon, PeopleIcon } from "./Icons";
 
 interface AddRecipeModalProps {
   onClose: () => void;
   onSave: (recipe: RecipeInput) => Promise<void>;
 }
 
-type ModalStep = "paste" | "parsing" | "preview" | "saving";
+type Step = "paste" | "parsing" | "preview" | "saving";
 
 export default function AddRecipeModal({ onClose, onSave }: AddRecipeModalProps) {
-  const [step, setStep] = useState<ModalStep>("paste");
+  const [step, setStep] = useState<Step>("paste");
   const [text, setText] = useState("");
   const [parsed, setParsed] = useState<RecipeInput | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   async function handleParse() {
     setStep("parsing");
     setError("");
-
     try {
       const res = await fetch("/api/parse-recipe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Parse failed");
+        throw new Error(data.error || "Couldn't read that recipe");
       }
-
-      const recipe: RecipeInput = await res.json();
-      setParsed(recipe);
+      const recipe = (await res.json()) as Omit<RecipeInput, "image_url">;
+      setParsed({ ...recipe, image_url: null });
       setStep("preview");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Something went wrong";
-      setError(message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
       setStep("paste");
     }
   }
@@ -46,171 +54,154 @@ export default function AddRecipeModal({ onClose, onSave }: AddRecipeModalProps)
     if (!parsed) return;
     setStep("saving");
     try {
-      await onSave(parsed);
+      await onSave({ ...parsed, image_url: imageUrl });
       onClose();
     } catch {
-      setError("Failed to save recipe.");
+      setError("Couldn't save that. Try again?");
       setStep("preview");
     }
   }
 
-  function formatIngredient(ing: Ingredient) {
-    const parts: string[] = [];
-    if (ing.amount || ing.unit) {
-      parts.push([ing.amount, ing.unit].filter(Boolean).join(" "));
-    }
-    parts.push(ing.item);
-    if (ing.notes) parts.push(`(${ing.notes})`);
-    return parts.join(" ");
-  }
+  const heading =
+    step === "preview" ? "Looks about right?" :
+    step === "parsing" ? "Reading your recipe" :
+    step === "saving" ? "Saving" : "Add a recipe";
+
+  const sub =
+    step === "preview" ? "Check the details, add a photo if you like, then save." :
+    step === "paste" ? "Paste it from anywhere. A blog, a screenshot's text, your notes app." : "";
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{step === "preview" ? "Preview Recipe" : "Add Recipe"}</h2>
-          <button
-            className="btn btn-icon btn-ghost"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+    <div className="sheet-overlay" onClick={onClose}>
+      <div
+        className="sheet sheet-narrow"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sheet-header">
+          <div>
+            <h2 id="add-title">{heading}</h2>
+            {sub && <p>{sub}</p>}
+          </div>
+          <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close">
+            <CloseIcon />
           </button>
         </div>
 
-        <div className="modal-body">
+        <div className="sheet-body">
           {step === "paste" && (
             <>
               <textarea
                 className="textarea"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder={"Paste a recipe here. Copy it from any website, blog, or notes app.\n\nInclude the title, ingredients, and steps. A URL is optional but will be saved if present."}
+                placeholder={"Title, ingredients, steps. Messy is fine.\n\nIf there's a link in there, we'll keep it as the source."}
+                autoFocus
               />
-              <p className="parse-hint">
-                Claude will read what you paste and turn it into a structured recipe.
-              </p>
-              {error && (
-                <p style={{ color: "var(--danger)", fontSize: "0.85rem", marginTop: "0.5rem" }}>
-                  {error}
-                </p>
-              )}
+              <p className="hint">Claude tidies it into ingredients, steps and tags for you.</p>
+              {error && <p className="error-text">{error}</p>}
             </>
           )}
 
-          {step === "parsing" && (
-            <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
-              <div className="spinner spinner-dark" style={{ width: "1.5rem", height: "1.5rem", borderWidth: "2.5px" }} />
-              <p style={{ color: "var(--text-secondary)", marginTop: "1rem", fontSize: "0.9rem" }}>
-                Parsing your recipe with Claude...
-              </p>
+          {(step === "parsing" || step === "saving") && (
+            <div className="busy">
+              <div className="spinner" />
+              {step === "parsing" ? "Sorting out the ingredients and steps..." : "Adding it to your book..."}
             </div>
           )}
 
           {step === "preview" && parsed && (
-            <div className="recipe-preview">
-              <h3>{parsed.title}</h3>
-              {parsed.description && <p>{parsed.description}</p>}
+            <>
+              <ImageDropzone value={imageUrl} onChange={setImageUrl} />
 
-              <div className="preview-meta">
-                {parsed.prep_time && <span>Prep: {parsed.prep_time}</span>}
-                {parsed.cook_time && <span>Cook: {parsed.cook_time}</span>}
-                {parsed.servings && <span>Serves: {parsed.servings}</span>}
-              </div>
+              <div className="preview">
+                <div>
+                  <h3>{parsed.title}</h3>
+                  {parsed.description && <p className="card-desc" style={{ marginTop: "0.35rem" }}>{parsed.description}</p>}
+                </div>
 
-              {parsed.tags.length > 0 && (
-                <div className="card-tags" style={{ padding: 0, marginBottom: "0.75rem" }}>
+                <div className="detail-meta" style={{ marginBottom: 0 }}>
+                  {parsed.prep_time && <span className="meta-pill"><ClockIcon /> {parsed.prep_time} prep</span>}
+                  {parsed.cook_time && <span className="meta-pill"><ClockIcon /> {parsed.cook_time} cook</span>}
+                  {parsed.servings && <span className="meta-pill"><PeopleIcon /> Serves {parsed.servings}</span>}
                   {parsed.tags.map((tag) => (
-                    <span key={tag} className="tag">{tag}</span>
+                    <span key={tag} className={`tag ${colorClass(tag)}`}>{tag}</span>
                   ))}
                 </div>
-              )}
 
-              <h4 style={{
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                color: "var(--text-muted)",
-                margin: "0 0 0.5rem",
-              }}>
-                Ingredients
-              </h4>
-              <ul className="ingredients-list">
-                {parsed.ingredients.map((ing, i) => (
-                  <li key={i}>{formatIngredient(ing)}</li>
-                ))}
-              </ul>
+                <div className="detail-columns">
+                  <section>
+                    <h3 className="section-label">
+                      Ingredients <span className="count">{parsed.ingredients.length}</span>
+                    </h3>
+                    <ul className="ingredients-list">
+                      {parsed.ingredients.map((ing, i) => (
+                        <li key={i}>
+                          <span>
+                            {(ing.amount || ing.unit) && (
+                              <span className="ingredient-amount">
+                                {[ing.amount, ing.unit].filter(Boolean).join(" ")}{" "}
+                              </span>
+                            )}
+                            {ing.item}
+                            {ing.notes && <span className="ingredient-notes">, {ing.notes}</span>}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                  <section>
+                    <h3 className="section-label">
+                      Steps <span className="count">{parsed.steps.length}</span>
+                    </h3>
+                    <ol className="steps-list">
+                      {parsed.steps.map((s, i) => (
+                        <li key={i}><span>{s}</span></li>
+                      ))}
+                    </ol>
+                  </section>
+                </div>
 
-              <h4 style={{
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                color: "var(--text-muted)",
-                margin: "1rem 0 0.5rem",
-              }}>
-                Steps
-              </h4>
-              <ol className="steps-list">
-                {parsed.steps.map((s, i) => (
-                  <li key={i}>{s}</li>
-                ))}
-              </ol>
-
-              {error && (
-                <p style={{ color: "var(--danger)", fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  {error}
-                </p>
-              )}
-            </div>
-          )}
-
-          {step === "saving" && (
-            <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
-              <div className="spinner spinner-dark" style={{ width: "1.5rem", height: "1.5rem", borderWidth: "2.5px" }} />
-              <p style={{ color: "var(--text-secondary)", marginTop: "1rem", fontSize: "0.9rem" }}>
-                Saving recipe...
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="modal-footer">
-          {step === "paste" && (
-            <>
-              <button className="btn btn-ghost" onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                className="btn btn-action"
-                disabled={text.trim().length < 10}
-                onClick={handleParse}
-              >
-                Parse with Claude
-              </button>
-            </>
-          )}
-          {step === "preview" && (
-            <>
-              <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  setStep("paste");
-                  setParsed(null);
-                }}
-              >
-                Back
-              </button>
-              <button className="btn btn-primary" onClick={handleSave}>
-                Save Recipe
-              </button>
+                {error && <p className="error-text">{error}</p>}
+              </div>
             </>
           )}
         </div>
+
+        {(step === "paste" || step === "preview") && (
+          <div className="sheet-footer">
+            {step === "paste" ? (
+              <>
+                <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+                <button
+                  className="btn btn-primary"
+                  disabled={text.trim().length < 10}
+                  onClick={handleParse}
+                >
+                  <SparkIcon size={16} />
+                  Tidy it up
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setStep("paste");
+                    setParsed(null);
+                  }}
+                >
+                  Back
+                </button>
+                <button className="btn btn-primary" onClick={handleSave}>
+                  Save to my book
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

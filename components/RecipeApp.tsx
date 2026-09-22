@@ -1,165 +1,166 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import type { Recipe, RecipeInput, ShoppingItem } from "@/lib/types";
-import { addRecipeAction, deleteRecipeAction } from "@/app/actions";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import type { Recipe, RecipeInput } from "@/lib/types";
+import { addRecipeAction } from "@/app/actions";
+import { colorClass } from "@/lib/ui";
+import { useShoppingList } from "@/lib/useShoppingList";
+import { useToast } from "@/lib/useToast";
 import Header from "./Header";
 import RecipeCard from "./RecipeCard";
 import AddRecipeModal from "./AddRecipeModal";
 import ShoppingPanel from "./ShoppingPanel";
-
-const STORAGE_KEY = "myrecipes-shopping";
-
-function loadShopping(): ShoppingItem[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveShopping(items: ShoppingItem[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  } catch {
-    // storage unavailable
-  }
-}
+import { SearchIcon, PotIcon, PlusIcon } from "./Icons";
 
 export default function RecipeApp({ recipes }: { recipes: Recipe[] }) {
-  const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
-  const [addedRecipeIds, setAddedRecipeIds] = useState<Set<number>>(new Set());
+  const list = useShoppingList();
+  const { toast, show } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [showShopping, setShowShopping] = useState(false);
+  const [search, setSearch] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
-  // Hydrate shopping list from localStorage on mount
+  const anyOverlay = showModal || showShopping;
   useEffect(() => {
-    const loaded = loadShopping();
-    setShoppingList(loaded);
-    setAddedRecipeIds(new Set(loaded.map((i) => i.recipeId)));
-  }, []);
+    document.body.style.overflow = anyOverlay ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [anyOverlay]);
 
-  // Persist shopping list on change
-  useEffect(() => {
-    saveShopping(shoppingList);
-  }, [shoppingList]);
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    recipes.forEach((r) => Array.isArray(r.tags) && r.tags.forEach((t) => set.add(t)));
+    return Array.from(set).sort();
+  }, [recipes]);
 
-  // Lock body scroll when panels are open
-  useEffect(() => {
-    document.body.style.overflow = showModal || showShopping ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [showModal, showShopping]);
+  const filtered = useMemo(() => {
+    let out = recipes;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      out = out.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.description.toLowerCase().includes(q) ||
+          (Array.isArray(r.tags) && r.tags.some((t) => t.toLowerCase().includes(q))) ||
+          (Array.isArray(r.ingredients) && r.ingredients.some((i) => i.item.toLowerCase().includes(q)))
+      );
+    }
+    if (activeTag) {
+      out = out.filter((r) => Array.isArray(r.tags) && r.tags.includes(activeTag));
+    }
+    return out;
+  }, [recipes, search, activeTag]);
 
-  const toggleRecipeInList = useCallback((recipe: Recipe) => {
-    const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
-
-    setShoppingList((prev) => {
-      const isAdded = prev.some((i) => i.recipeId === recipe.id);
-      if (isAdded) {
-        return prev.filter((i) => i.recipeId !== recipe.id);
-      }
-      const newItems: ShoppingItem[] = ingredients.map((ing) => ({
-        recipeId: recipe.id,
-        recipeTitle: recipe.title,
-        ingredient: ing,
-        checked: false,
-      }));
-      return [...prev, ...newItems];
-    });
-
-    setAddedRecipeIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(recipe.id)) {
-        next.delete(recipe.id);
-      } else {
-        next.add(recipe.id);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleShoppingItem = useCallback((index: number) => {
-    setShoppingList((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, checked: !item.checked } : item
-      )
-    );
-  }, []);
-
-  const clearChecked = useCallback(() => {
-    setShoppingList((prev) => {
-      const kept = prev.filter((i) => !i.checked);
-      const keptIds = new Set(kept.map((i) => i.recipeId));
-      setAddedRecipeIds(keptIds);
-      return kept;
-    });
-  }, []);
-
-  const clearAll = useCallback(() => {
-    setShoppingList([]);
-    setAddedRecipeIds(new Set());
-  }, []);
+  const toggleList = useCallback(
+    (recipe: Recipe) => {
+      const n = list.toggleRecipe(recipe);
+      show(n ? `Added ${n} ingredients to your list` : "Removed from your list");
+    },
+    [list, show]
+  );
 
   async function handleSaveRecipe(recipe: RecipeInput) {
     await addRecipeAction(recipe);
+    show(`Saved ${recipe.title}`);
   }
 
-  async function handleDeleteRecipe(id: number) {
-    // Also remove from shopping list
-    setShoppingList((prev) => prev.filter((i) => i.recipeId !== id));
-    setAddedRecipeIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    await deleteRecipeAction(id);
-  }
+  const closeModal = useCallback(() => setShowModal(false), []);
+  const closeShopping = useCallback(() => setShowShopping(false), []);
 
   return (
-    <>
+    <div className="app-shell">
       <Header
         recipeCount={recipes.length}
-        shoppingCount={shoppingList.length}
+        shoppingCount={list.items.length}
         onAddRecipe={() => setShowModal(true)}
         onOpenShopping={() => setShowShopping(true)}
       />
 
-      <div className="recipe-grid">
-        {recipes.length === 0 && (
-          <div className="empty-state">
-            <p>&#127859;</p>
-            <p>No recipes yet</p>
-            <p>Add your first recipe to get started.</p>
+      {recipes.length > 0 && (
+        <div className="filters-bar">
+          <div className="search-wrap">
+            <SearchIcon className="search-icon" size={18} />
+            <input
+              id="recipe-search"
+              type="search"
+              className="search-input"
+              placeholder="Search by name, tag or ingredient"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-        )}
-        {recipes.map((recipe) => (
-          <RecipeCard
-            key={recipe.id}
-            recipe={recipe}
-            isAdded={addedRecipeIds.has(recipe.id)}
-            onToggleList={toggleRecipeInList}
-            onDelete={handleDeleteRecipe}
-          />
-        ))}
-      </div>
-
-      {showModal && (
-        <AddRecipeModal
-          onClose={() => setShowModal(false)}
-          onSave={handleSaveRecipe}
-        />
+          {allTags.length > 0 && (
+            <div className="tag-filters">
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  className={`tag ${colorClass(tag)} ${activeTag === tag ? "active" : ""}`}
+                  aria-pressed={activeTag === tag}
+                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
+
+      {recipes.length === 0 && (
+        <div className="empty-state">
+          <div className="blob"><PotIcon size={44} /></div>
+          <h2>Nothing cooking yet</h2>
+          <p>Paste a recipe from anywhere and it&apos;ll get tidied into a proper card, photo optional.</p>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <PlusIcon size={16} /> Add your first recipe
+          </button>
+        </div>
+      )}
+
+      {recipes.length > 0 && filtered.length === 0 && (
+        <div className="empty-state">
+          <h2>No luck</h2>
+          <p>Nothing matches that. Try a different word, or clear the filter.</p>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              setSearch("");
+              setActiveTag(null);
+            }}
+          >
+            Show everything
+          </button>
+        </div>
+      )}
+
+      {filtered.length > 0 && (
+        <div className="recipe-grid">
+          {filtered.map((recipe) => (
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              isAdded={list.addedIds.has(recipe.id)}
+              onToggleList={toggleList}
+            />
+          ))}
+        </div>
+      )}
+
+      {showModal && <AddRecipeModal onClose={closeModal} onSave={handleSaveRecipe} />}
 
       {showShopping && (
         <ShoppingPanel
-          items={shoppingList}
-          onToggleItem={toggleShoppingItem}
-          onClearChecked={clearChecked}
-          onClearAll={clearAll}
-          onClose={() => setShowShopping(false)}
+          items={list.items}
+          onToggleItem={list.toggleItem}
+          onClearChecked={list.clearChecked}
+          onClearAll={list.clearAll}
+          onClose={closeShopping}
         />
       )}
-    </>
+
+      {toast && <div className="toast" role="status">{toast}</div>}
+    </div>
   );
 }

@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     }
 
     const { object } = await generateObject({
-      model: anthropic("claude-sonnet-4-20250514"),
+      model: anthropic("claude-sonnet-4-6"),
       schema: recipeSchema,
       prompt: `Parse the following recipe text into structured data. Extract every ingredient with its amount, unit, item name, and any prep notes. Write clear, complete cooking steps. Infer reasonable tags. If a URL is present, extract it.
 
