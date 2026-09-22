@@ -4,9 +4,13 @@ const MAX_BYTES = 4 * 1024 * 1024; // 4 MB, under Vercel's request body limit
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic"];
 
 export async function POST(req: Request) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  // Vercel Blob auth: OIDC (BLOB_STORE_ID + VERCEL_OIDC_TOKEN) is the default for new
+  // stores; a static BLOB_READ_WRITE_TOKEN also works. The SDK picks whichever is present.
+  const hasOidc = !!process.env.BLOB_STORE_ID && !!process.env.VERCEL_OIDC_TOKEN;
+  const hasToken = !!process.env.BLOB_READ_WRITE_TOKEN;
+  if (!hasOidc && !hasToken) {
     return Response.json(
-      { error: "Photo uploads aren't set up yet. Add BLOB_READ_WRITE_TOKEN to your .env." },
+      { error: "Photo uploads aren't set up yet. Add BLOB_STORE_ID to your .env (or run vercel env pull)." },
       { status: 500 }
     );
   }

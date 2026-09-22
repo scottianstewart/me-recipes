@@ -36,7 +36,7 @@
   --t2-bg: #fde0de; --t2-ink: #9a2f2f;
   --t3-bg: #dbeafb; --t3-ink: #1f4f7e;
   --t4-bg: #eae0fa; --t4-ink: #5b3a96;
-  --t5-bg: #ffe5cf; --t5-ink: #9a4a12;
+  --t5-bg: #d3f0ec; --t5-ink: #136a62;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -64,12 +64,12 @@
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px -12px rgba(0, 0, 0, 0.5);
     --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.3), 0 22px 40px -16px rgba(0, 0, 0, 0.7);
     --shadow-sheet: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
-    --t0-bg: #3b3312; --t0-ink: #f2d56b;
-    --t1-bg: #17352a; --t1-ink: #8ad8ad;
-    --t2-bg: #3f2021; --t2-ink: #f2a1a1;
-    --t3-bg: #1a2d42; --t3-ink: #93c2ee;
-    --t4-bg: #2b2242; --t4-ink: #c2a8f0;
-    --t5-bg: #3f281a; --t5-ink: #f6b384;
+    --t0-bg: #3d3600; --t0-ink: #ffd95c;
+    --t1-bg: #0d3b2a; --t1-ink: #6fe3a8;
+    --t2-bg: #4a1a2e; --t2-ink: #ff9fbe;
+    --t3-bg: #10345c; --t3-ink: #7fc4ff;
+    --t4-bg: #2d1c5e; --t4-ink: #c8a8ff;
+    --t5-bg: #0b3a3a; --t5-ink: #6fe0d6;
   }
 }
 
@@ -97,12 +97,12 @@
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px -12px rgba(0, 0, 0, 0.5);
   --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.3), 0 22px 40px -16px rgba(0, 0, 0, 0.7);
   --shadow-sheet: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
-  --t0-bg: #3b3312; --t0-ink: #f2d56b;
-  --t1-bg: #17352a; --t1-ink: #8ad8ad;
-  --t2-bg: #3f2021; --t2-ink: #f2a1a1;
-  --t3-bg: #1a2d42; --t3-ink: #93c2ee;
-  --t4-bg: #2b2242; --t4-ink: #c2a8f0;
-  --t5-bg: #3f281a; --t5-ink: #f6b384;
+  --t0-bg: #3d3600; --t0-ink: #ffd95c;
+  --t1-bg: #0d3b2a; --t1-ink: #6fe3a8;
+  --t2-bg: #4a1a2e; --t2-ink: #ff9fbe;
+  --t3-bg: #10345c; --t3-ink: #7fc4ff;
+  --t4-bg: #2d1c5e; --t4-ink: #c8a8ff;
+  --t5-bg: #0b3a3a; --t5-ink: #6fe0d6;
 }
 
 /* ---- Reset ---- */
@@ -419,6 +419,10 @@ button.tag.active {
 .card-placeholder.t4 { background-color: var(--t4-bg); color: var(--t4-ink); }
 .card-placeholder.t5 { background-color: var(--t5-bg); color: var(--t5-ink); }
 .card-placeholder span { opacity: 0.55; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .card-placeholder span { opacity: 0.8; }
+}
+:root[data-theme="dark"] .card-placeholder span { opacity: 0.8; }
 
 .card-list-btn {
   position: absolute;
