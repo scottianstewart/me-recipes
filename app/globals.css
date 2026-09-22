@@ -27,7 +27,7 @@
   --radius: 14px;
   --radius-sm: 10px;
   --pill: 999px;
-  --font-display: 'Bodoni Moda', 'Didot', 'Bodoni 72', Georgia, serif;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-body: 'Nunito', system-ui, -apple-system, sans-serif;
 
   /* sticker tag palette */
@@ -1722,10 +1722,9 @@ button.tag.active {
 
 
 /* =========================================================
-   Display face tuning (Bodoni Moda)
-   A high-contrast serif wants near-zero tracking and a touch
-   more size than the grotesque did. Digits that need to line
-   up stay in the body face.
+   Display face tuning (Fraunces)
+   Soft, low-contrast serif with optical sizing. SOFT rounds the
+   terminals; WONK turns on the quirky alternates at display sizes.
    ========================================================= */
 .card-title,
 .week-title,
@@ -1741,35 +1740,33 @@ button.tag.active {
 .cook-heading,
 .cook-step,
 .cook-recipe {
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
   font-weight: 700;
+  font-variation-settings: "SOFT" 60, "WONK" 0;
 }
 
+/* Big display sizes get the wonky alternates and a bit more weight */
 .detail-title,
 .cook-heading,
-.empty-state h2 {
+.empty-state h2,
+.week-title {
   font-weight: 800;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.02em;
+  font-variation-settings: "SOFT" 60, "WONK" 1;
 }
 
-.card-title { font-size: 1.3rem; line-height: 1.15; }
+.card-title { font-size: 1.25rem; line-height: 1.15; }
 .week-name { font-size: 1.1rem; }
 .week-title { font-size: 1.5rem; }
-.section-label { font-size: 1.15rem; }
-.sheet-header h2, .shopping-header h2 { font-size: 1.6rem; }
-.cook-step { font-weight: 600; line-height: 1.25; }
-
-/* hairline-safe: small display text leans on the optical-size axis */
-.card-title, .week-name, .cook-recipe, .shopping-group h4, .section-label {
-  font-optical-sizing: auto;
-}
+.section-label { font-size: 1.1rem; }
+.sheet-header h2, .shopping-header h2 { font-size: 1.5rem; }
+.cook-step { font-weight: 600; line-height: 1.3; }
 
 /* things that should stay geometric and tabular */
 .timer-time,
 .cook-where,
 .section-label .count,
-.steps-list li::before,
-.card-placeholder {
+.steps-list li::before {
   font-family: var(--font-body);
 }
 
@@ -1779,6 +1776,7 @@ button.tag.active {
   font-family: var(--font-display);
   font-weight: 800;
   font-style: italic;
+  font-variation-settings: "SOFT" 100, "WONK" 1;
 }
 
 @media (max-width: 480px) {

@@ -21,7 +21,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Nunito:wght@500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,500..800,0..100,0..1;1,9..144,500..800,0..100,0..1&family=Nunito:wght@500;600;700;800&display=swap"
           rel="stylesheet"
         />
       </head>
